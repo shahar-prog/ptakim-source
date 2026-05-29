@@ -8,6 +8,7 @@ import { CountdownScreen } from "@/components/countdown-screen"
 import { GameScreen } from "@/components/game-screen"
 import { ResultsScreen } from "@/components/results-screen"
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 import { Play } from "lucide-react"
 
 type GameState = "select" | "ready" | "countdown" | "playing" | "results"
@@ -24,23 +25,67 @@ export default function Home() {
   const [selectedLists, setSelectedLists] = useState<string[]>([])
   const [results, setResults] = useState<WordResult[]>([])
 
+  // Custom list states
+  const [customLists, setCustomLists] = useState<WordList[]>([])
+  const [customInput, setCustomInput] = useState<string>("")
+  const [loading, setLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+
   const handleToggleList = useCallback((listId: string) => {
     setSelectedLists((prev) =>
       prev.includes(listId) ? prev.filter((id) => id !== listId) : [...prev, listId]
     )
   }, [])
 
+  const handleAddCustomList = async () => {
+    const name = customInput.trim()
+    if (!name) return
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`https://shahar-prog.github.io/PTKL/${name}.json`)
+      if (!res.ok) throw new Error('Collection not found')
+      const data = await res.json()
+      // Validate shape
+      if (
+        typeof data === 'object' &&
+        data !== null &&
+        typeof data.id === 'string' &&
+        typeof data.name === 'string' &&
+        Array.isArray(data.words) &&
+        data.words.every((w: any) => typeof w === 'string')
+      ) {
+        // Avoid duplicate ids
+        const exists = [...wordLists, ...customLists].some(list => list.id === data.id)
+        if (!exists) {
+          setCustomLists(prev => [...prev, data as WordList])
+          setCustomInput('') // clear input
+        } else {
+          setError('Collection with this ID already exists')
+        }
+      } else {
+        throw new Error('Invalid data format')
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to load collection')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const allLists = useMemo(() => [...wordLists, ...customLists], [wordLists, customLists])
+
   const selectedWords = useMemo(() => {
-    return wordLists
+    return allLists
       .filter((list) => selectedLists.includes(list.id))
       .flatMap((list) => list.words)
-  }, [selectedLists])
+  }, [allLists, selectedLists])
 
   const selectedCategoryNames = useMemo(() => {
-    return wordLists
+    return allLists
       .filter((list) => selectedLists.includes(list.id))
       .map((list) => list.name)
-  }, [selectedLists])
+  }, [allLists, selectedLists])
 
   const handleStartGame = useCallback(() => {
     setGameState("ready")
@@ -109,10 +154,43 @@ export default function Home() {
         </p>
       </header>
 
+      {/* Custom collection input */}
+      <section className="mb-6">
+        <Card className="p-4">
+          <div className="flex flex-col space-2">
+            <label className="text-sm font-medium text-muted-foreground">
+              Add custom collection (English name):
+            </label>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
+              <input
+                type="text"
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddCustomList()}
+                placeholder="e.g., animals"
+                className="flex-1 min-w-0 border-border px-3 py-2 rounded-md shadow-sm focus:border-primary focus:ring-primary disabled:opacity-50"
+                disabled={loading}
+              />
+              <Button
+                onClick={handleAddCustomList}
+                disabled={loading || !customInput.trim()}
+                className="px-4 py-2 text-sm"
+                loading={loading}
+              >
+                {loading ? 'Loading...' : 'Add'}
+              </Button>
+              {error && (
+                <span className="text-sm text-destructive">{error}</span>
+              )}
+            </div>
+          </div>
+        </Card>
+      </section>
+
       {/* List selection */}
       <div className="flex-1 p-6 overflow-y-auto">
         <ListSelector
-          lists={wordLists}
+          lists={allLists}
           selectedLists={selectedLists}
           onToggleList={handleToggleList}
         />
