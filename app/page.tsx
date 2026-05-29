@@ -7,9 +7,8 @@ import { ReadyScreen } from "@/components/ready-screen"
 import { ResultsScreen } from "@/components/results-screen"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { WordList, wordLists } from "@/lib/word-lists"
 import { Play } from "lucide-react"
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 type GameState = "select" | "ready" | "countdown" | "playing" | "results"
 
@@ -18,6 +17,13 @@ interface WordResult {
   correct: boolean
 }
 
+export interface WordList {
+  id: string
+  name: string
+  words: string[]
+}
+
+
 const ROUND_DURATION = 60 // seconds
 
 export default function Home() {
@@ -25,11 +31,42 @@ export default function Home() {
   const [selectedLists, setSelectedLists] = useState<string[]>([])
   const [results, setResults] = useState<WordResult[]>([])
 
+  // Default collections loaded from PTKL/collections.json
+  const [defaultLists, setDefaultLists] = useState<WordList[]>([])
+  const [defaultLoading, setDefaultLoading] = useState<boolean>(true)
+  const [defaultError, setDefaultError] = useState<string | null>(null)
+
   // Custom list states
   const [customLists, setCustomLists] = useState<WordList[]>([])
   const [customInput, setCustomInput] = useState<string>("")
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Load default collections on mount
+  useEffect(() => {
+    async function fetchDefaults() {
+      try {
+        const res = await fetch('https://shahar-prog.github.io/PTKL/collections.json')
+        if (!res.ok) throw new Error('Failed to fetch collection list')
+        const names: string[] = await res.json()
+        // Fetch each collection's data
+        const promises = names.map(name =>
+          fetch(`https://shahar-prog.github.io/PTKL/${name}.json`)
+            .then(r => {
+              if (!r.ok) throw new Error(`Failed to load ${name}`)
+              return r.json()
+            })
+        )
+        const lists = await Promise.all(promises)
+        setDefaultLists(lists)
+        setDefaultLoading(false)
+      } catch (err: any) {
+        setDefaultError(err.message || 'Failed to load collections')
+        setDefaultLoading(false)
+      }
+    }
+    fetchDefaults()
+  }, [])
 
   const handleToggleList = useCallback((listId: string) => {
     setSelectedLists((prev) =>
@@ -55,8 +92,9 @@ export default function Home() {
         Array.isArray(data.words) &&
         data.words.every((w: any) => typeof w === 'string')
       ) {
-        // Avoid duplicate ids
-        const exists = [...wordLists, ...customLists].some(list => list.id === data.id)
+        // Avoid duplicate ids across default and custom lists
+        const allExisting = [...defaultLists, ...customLists]
+        const exists = allExisting.some(list => list.id === data.id)
         if (!exists) {
           setCustomLists(prev => [...prev, data as WordList])
           setCustomInput('') // clear input
@@ -73,7 +111,7 @@ export default function Home() {
     }
   }
 
-  const allLists = useMemo(() => [...wordLists, ...customLists], [wordLists, customLists])
+  const allLists = useMemo(() => [...defaultLists, ...customLists], [defaultLists, customLists])
 
   const selectedWords = useMemo(() => {
     return allLists
@@ -154,6 +192,21 @@ export default function Home() {
         </p>
       </header>
 
+      {/* Default collections loading state */}
+      {defaultLoading && (
+        <section className="mb-6">
+          <Card className="p-4 text-center">
+            <p className="text-muted-foreground">Loading collections...</p>
+          </Card>
+        </section>
+      )}
+      {!defaultLoading && defaultError && (
+        <section className="mb-6">
+          <Card className="p-4 text-center text-destructive">
+            <p>{defaultError}</p>
+          </Card>
+        </section>
+      )}
       {/* List selection */}
       <div className="flex-1 p-6 overflow-y-auto">
         <ListSelector
