@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useCallback, useMemo } from "react"
-import { wordLists } from "@/lib/word-lists"
-import { ListSelector } from "@/components/list-selector"
-import { ReadyScreen } from "@/components/ready-screen"
 import { CountdownScreen } from "@/components/countdown-screen"
 import { GameScreen } from "@/components/game-screen"
+import { ListSelector } from "@/components/list-selector"
+import { ReadyScreen } from "@/components/ready-screen"
 import { ResultsScreen } from "@/components/results-screen"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { WordList, wordLists } from "@/lib/word-lists"
 import { Play } from "lucide-react"
+import { useCallback, useMemo, useState } from "react"
 
 type GameState = "select" | "ready" | "countdown" | "playing" | "results"
 
@@ -38,7 +38,7 @@ export default function Home() {
   }, [])
 
   const handleAddCustomList = async () => {
-    const name = customInput.trim()
+    const name = customInput.trim().toLowerCase()
     if (!name) return
     setLoading(true)
     setError(null)
@@ -154,39 +154,6 @@ export default function Home() {
         </p>
       </header>
 
-      {/* Custom collection input */}
-      <section className="mb-6">
-        <Card className="p-4">
-          <div className="flex flex-col space-2">
-            <label className="text-sm font-medium text-muted-foreground">
-              Add custom collection (English name):
-            </label>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
-              <input
-                type="text"
-                value={customInput}
-                onChange={(e) => setCustomInput(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddCustomList()}
-                placeholder="e.g., animals"
-                className="flex-1 min-w-0 border-border px-3 py-2 rounded-md shadow-sm focus:border-primary focus:ring-primary disabled:opacity-50"
-                disabled={loading}
-              />
-              <Button
-                onClick={handleAddCustomList}
-                disabled={loading || !customInput.trim()}
-                className="px-4 py-2 text-sm"
-                loading={loading}
-              >
-                {loading ? 'Loading...' : 'Add'}
-              </Button>
-              {error && (
-                <span className="text-sm text-destructive">{error}</span>
-              )}
-            </div>
-          </div>
-        </Card>
-      </section>
-
       {/* List selection */}
       <div className="flex-1 p-6 overflow-y-auto">
         <ListSelector
@@ -195,6 +162,40 @@ export default function Home() {
           onToggleList={handleToggleList}
         />
       </div>
+
+      {/* Custom collection input */}
+      <section className="mb-6">
+        <Card className="p-4">
+          <div className="flex flex-col space-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
+              <div className="flex flex-row" dir="ltr">
+                <input
+                  type="text"
+                  value={customInput}
+                  onChange={(e) => setCustomInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddCustomList()}
+                  placeholder="Load custom collection..."
+                  className="flex-1 min-w-0 border-border px-3 py-2 rounded-md shadow-sm focus:border-primary focus:ring-primary disabled:opacity-50"
+                  disabled={loading}
+                  style={{ direction: "ltr", outline: 'none' }}
+                />
+                <Button
+                  onClick={handleAddCustomList}
+                  disabled={loading || !customInput.trim()}
+                  className="px-4 py-2 text-sm"
+                // loading={loading}
+                >
+                  {loading ? 'Loading...' : 'Add'}
+                </Button>
+              </div>
+              {error && (
+                <span className="text-sm text-destructive">{error}</span>
+              )}
+            </div>
+          </div>
+        </Card>
+      </section>
+
 
       {/* Footer with start button */}
       <div className="p-6 border-t border-border bg-card">
