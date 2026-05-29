@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Play } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useDeviceOrientation } from "@/hooks/use-device-orientation"
 
 type GameState = "select" | "ready" | "countdown" | "playing" | "results"
 
@@ -30,6 +31,7 @@ export default function Home() {
   const [gameState, setGameState] = useState<GameState>("select")
   const [selectedLists, setSelectedLists] = useState<string[]>([])
   const [results, setResults] = useState<WordResult[]>([])
+  const { requestPermission } = useDeviceOrientation()
 
   // Default collections loaded from PTKL/collections.json
   const [defaultLists, setDefaultLists] = useState<WordList[]>([])
@@ -129,9 +131,10 @@ export default function Home() {
     setGameState("ready")
   }, [])
 
-  const handleBeginRound = useCallback(() => {
+  const handleBeginRound = useCallback(async () => {
+    await requestPermission()
     setGameState("countdown")
-  }, [])
+  }, [requestPermission])
 
   const handleCountdownComplete = useCallback(() => {
     setGameState("playing")
