@@ -44,7 +44,7 @@ export default function Home() {
     setError(null)
     try {
       const res = await fetch(`https://shahar-prog.github.io/PTKL/${name}.json`)
-      if (!res.ok) throw new Error('Collection not found')
+      if (!res.ok) throw new Error('This collection doesn\'t exist.')
       const data = await res.json()
       // Validate shape
       if (
@@ -61,7 +61,7 @@ export default function Home() {
           setCustomLists(prev => [...prev, data as WordList])
           setCustomInput('') // clear input
         } else {
-          setError('Collection with this ID already exists')
+          setError('This collection is already shown, click it to select it.')
         }
       } else {
         throw new Error('Invalid data format')
@@ -189,7 +189,7 @@ export default function Home() {
                 </Button>
               </div>
               {error && (
-                <span className="text-sm text-destructive">{error}</span>
+                <span className="text-sm text-destructive" style={{ direction: "ltr" }}>{error}</span>
               )}
             </div>
           </div>
