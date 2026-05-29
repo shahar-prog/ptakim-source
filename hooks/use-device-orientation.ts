@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback, useRef, useMemo } from "react"
 
 type OrientationMode = "portrait" | "landscape" | null
 
@@ -25,6 +25,20 @@ export function useDeviceOrientation(): UseDeviceOrientationResult {
 
   // Track if we're waiting for user to return to neutral
   const waitingForNeutralRef = useRef(false)
+  // Track if we've already tried to request permission on iOS
+  const iosPermissionRequestedRef = useRef(false)
+  // Track if we've set up the interaction listener for iOS
+  const iosInteractionListenerSetRef = useRef(false)
+  const [isIOS, setIsIOS] = useState(false)
+
+  // Detect if we're on iOS
+  useEffect(() => {
+    const userAgent =
+      window.navigator.userAgent ||
+      window.navigator.vendor
+
+    setIsIOS(/iPad|iPhone|iPod/.test(userAgent))
+  }, [])
 
   useEffect(() => {
     setIsSupported(typeof window !== "undefined" && "DeviceOrientationEvent" in window)
@@ -72,6 +86,50 @@ export function useDeviceOrientation(): UseDeviceOrientationResult {
       return true
     }
   }, [handleOrientation])
+
+  // Handle iOS permission request on user interaction
+  useEffect(() => {
+    if (!isIOS) return
+
+    // Only set up the interaction listener once
+    if (iosInteractionListenerSetRef.current) return
+    iosInteractionListenerSetRef.current = true
+
+    const handleFirstInteraction = async () => {
+      // Only request permission once per session
+      if (iosPermissionRequestedRef.current) return
+      iosPermissionRequestedRef.current = true
+
+      if (isSupported && !permissionGranted) {
+        await requestPermission()
+      }
+
+      // Remove the listener after first use
+      window.removeEventListener('touchstart', handleFirstInteraction, { passive: true })
+      window.removeEventListener('click', handleFirstInteraction, { passive: true })
+      window.removeEventListener('keydown', handleFirstInteraction, { passive: true })
+    }
+
+    // Add listeners for common user interactions
+    window.addEventListener('touchstart', handleFirstInteraction, { passive: true })
+    window.addEventListener('click', handleFirstInteraction, { passive: true })
+    window.addEventListener('keydown', handleFirstInteraction, { passive: true })
+
+    // Cleanup function
+    return () => {
+      window.removeEventListener('touchstart', handleFirstInteraction, { passive: true })
+      window.removeEventListener('click', handleFirstInteraction, { passive: true })
+      window.removeEventListener('keydown', handleFirstInteraction, { passive: true })
+    }
+  }, [isIOS, isSupported, permissionGranted, requestPermission])
+
+  // For non-iOS devices, request permission automatically on mount
+  useEffect(() => {
+    if (isIOS) return // Skip auto-request on iOS
+    if (isSupported && !permissionGranted) {
+      requestPermission()
+    }
+  }, [isIOS, isSupported, permissionGranted, requestPermission])
 
   useEffect(() => {
     return () => {
