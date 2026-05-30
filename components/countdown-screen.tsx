@@ -29,6 +29,9 @@ export function CountdownScreen({ onCountdownComplete }: CountdownScreenProps) {
     if (isLandscape && !isReady) {
       setIsReady(true)
       setCount(3)
+      // Play countdown sound
+      const audio = new Audio('countdown.mp3')
+      audio.play().catch(e => console.error('Failed to play countdown sound:', e))
     } else if (!isLandscape && isReady && count === null) {
       setIsReady(false)
     }

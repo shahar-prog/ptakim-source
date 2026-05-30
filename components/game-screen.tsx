@@ -49,6 +49,9 @@ export function GameScreen({ words, roundDuration, onRoundEnd }: GameScreenProps
 
     if (timeLeft <= 0) {
       gameEndedRef.current = true
+      // Play outro sound
+      const audio = new Audio('outro.mp3')
+      audio.play().catch(e => console.error('Failed to play outro sound:', e))
       onRoundEnd(results)
       return
     }
@@ -58,7 +61,7 @@ export function GameScreen({ words, roundDuration, onRoundEnd }: GameScreenProps
     }, 1000)
 
     return () => clearInterval(timer)
-  }, [timeLeft, results, onRoundEnd])
+  }, [timeLeft, onRoundEnd])
 
   const handleAnswer = useCallback(
     (correct: boolean) => {
@@ -66,6 +69,9 @@ export function GameScreen({ words, roundDuration, onRoundEnd }: GameScreenProps
 
       setIsProcessing(true)
       setFeedback(correct ? "correct" : "skip")
+      // Play sound based on correctness
+      const sound = new Audio(correct ? 'success.mp3' : 'fail.mp3')
+      sound.play().catch(e => console.error(`Failed to play ${correct ? 'success' : 'fail'} sound:`, e))
 
       const newResult: WordResult = {
         word: shuffledWords[currentWordIndex],
